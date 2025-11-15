@@ -1,0 +1,24 @@
+Resources:
+  UserInputTemporaryLake:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: user-input-temporary-lake
+      NotificationConfiguration:
+        EventBridgeConfiguration:
+          EventBridgeEnabled: true
+
+  ResizedImageStorageLake:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: resized-image-lake
+      NotificationConfiguration:
+        EventBridgeConfiguration:
+          EventBridgeEnabled: true
+
+  FrontEndHostingBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: front-end-hosting-bucket
+      NotificationConfiguration:
+        EventBridgeConfiguration:
+          EventBridgeEnabled: true

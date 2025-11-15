@@ -1,0 +1,58 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+Resources:  
+  HelloWorldFunction:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Properties:
+      Runtime: python3.11
+      Timeout: 3
+      Handler: app.lambda_handler
+      FunctionName: HelloWorldFunction
+      CodeUri: hello_world/
+      Architectures:
+      - x86_64
+      Events:
+        HelloWorld:
+          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+          Properties:
+            Path: /hello
+            Method: get
+
+  ResizeImageFunction:
+      Type: AWS::Serverless::Function
+      Properties:
+        Runtime: python3.11
+        Timeout: 3
+        Handler: app.lambda_handler
+        FunctionName: ResizeImageFunction
+        CodeUri: resize_image/
+        Architectures:
+        - x86_64
+        Events:
+          S3ObjectCreatedEvent:
+            Type: EventBridgeRule
+            Properties:
+              RuleName: detect-user-input-rule
+              Pattern:
+                source:
+                  - "aws.s3"
+                detail-type:
+                  - "Object Created"
+                detail:
+                  bucket:
+                    name:
+                      - "user-input-temporary-lake"
+
+
+# Outputs:
+  # HelloWorldApi:
+  #   Description: API Gateway endpoint URL for Prod stage for Hello World 
+  #     function
+  #   Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/Prod/hello/"
+  # HelloWorldFunction:
+  #   Description: Hello World Lambda Function ARN
+  #   Value: !GetAtt HelloWorldFunction.Arn
+  # HelloWorldFunctionIamRole:
+  #   Description: Implicit IAM Role created for Hello World function
+  #   Value: !GetAtt HelloWorldFunctionRole.Arn
