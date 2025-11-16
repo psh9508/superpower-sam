@@ -39,4 +39,4 @@ Outputs:
     Description: Frontend hosting bucket name
     Value: !Ref FrontEndHostingBucket
     Export:
-      Name: !Sub '${AWS::StackName}-FrontEndHostingBucketName'
+      Name: 'S3Stack-FrontEndHostingBucketName'
