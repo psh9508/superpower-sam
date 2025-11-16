@@ -44,6 +44,19 @@ Resources:
                     name:
                       - "user-input-temporary-lake"
 
+  GetPresignedUploadUrlFunction:
+      Type: AWS::Serverless::Function
+      Properties:
+        Runtime: python3.11
+        Timeout: 3
+        Handler: app.lambda_handler
+        FunctionName: GetPresignedUploadUrlFunction
+        CodeUri: get_upload_url/
+        Environment:
+          Variables:
+            BUCKET_NAME: !ImportValue superpower-stack-FrontEndHostingBucketName
+        Architectures:
+        - x86_64
 
 # Outputs:
   # HelloWorldApi:
