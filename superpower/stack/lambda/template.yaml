@@ -54,7 +54,7 @@ Resources:
         CodeUri: get_upload_url/
         Environment:
           Variables:
-            BUCKET_NAME: !ImportValue S3Stack-FrontEndHostingBucketName
+            BUCKET_NAME: user-input-temporary-lake
         Architectures:
         - x86_64
         Events:
