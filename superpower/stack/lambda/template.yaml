@@ -1,24 +1,7 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 
-Resources:  
-  HelloWorldFunction:
-    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
-    Properties:
-      Runtime: python3.11
-      Timeout: 3
-      Handler: app.lambda_handler
-      FunctionName: HelloWorldFunction
-      CodeUri: hello_world/
-      Architectures:
-      - x86_64
-      Events:
-        HelloWorld:
-          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
-          Properties:
-            Path: /hello
-            Method: get
-
+Resources:
   ResizeImageFunction:
       Type: AWS::Serverless::Function
       Properties:
@@ -27,6 +10,9 @@ Resources:
         Handler: app.lambda_handler
         FunctionName: ResizeImageFunction
         CodeUri: resize_image/
+        Environment:
+          Variables:
+            BUCKET_NAME: sp-resized-image-bucket
         Architectures:
         - x86_64
         Events:

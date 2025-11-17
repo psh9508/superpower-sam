@@ -1,10 +1,11 @@
 import boto3
+import os
 from io import BytesIO
 from PIL import Image
 import urllib.parse
 
 s3 = boto3.client('s3', region_name='ap-northeast-2')
-RESIZED_BUCKET = "resized-image-lake"
+BUCKET_NAME = os.environ['BUCKET_NAME']
 
 def lambda_handler(event, context):
     try:
@@ -52,7 +53,7 @@ def lambda_handler(event, context):
 
         # 7. 리사이즈된 이미지 S3 업로드
         upload_to_resized_bucket(key, buffer.read(), content_type)
-        print(f"Resized image uploaded to {RESIZED_BUCKET}/{key}")
+        print(f"Resized image uploaded to {BUCKET_NAME}/{key}")
 
         return {
             "statusCode": 200,
@@ -68,7 +69,7 @@ def lambda_handler(event, context):
 
 def upload_to_resized_bucket(key, data, content_type):
     s3.put_object(
-        Bucket=RESIZED_BUCKET,
+        Bucket=BUCKET_NAME,
         Key=key,
         Body=data,
         ContentType=content_type
