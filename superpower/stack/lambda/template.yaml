@@ -10,6 +10,16 @@ Resources:
         Handler: app.lambda_handler
         FunctionName: ResizeImageFunction
         CodeUri: resize_image/
+        Policies:
+          - Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:ListBucket
+                  - s3:PutObject
+                Resource:
+                  - arn:aws:s3:::sp-*
+                  - arn:aws:s3:::sp-*/*
         Environment:
           Variables:
             BUCKET_NAME: sp-resized-image-bucket
