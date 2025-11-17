@@ -8,7 +8,7 @@
       "eventName": "ObjectCreated:Put",
       "s3": {
         "bucket": {
-          "name": "user-input-temporary-lake"
+          "name": "sp-user-input-temporary-bucket"
         },
         "object": {
           "key": "UNREAL.png",

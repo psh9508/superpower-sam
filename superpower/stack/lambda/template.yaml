@@ -42,7 +42,7 @@ Resources:
                 detail:
                   bucket:
                     name:
-                      - "user-input-temporary-lake"
+                      - "sp-user-input-temporary-bucket"
 
   GetPresignedUploadUrlFunction:
       Type: AWS::Serverless::Function
@@ -54,7 +54,7 @@ Resources:
         CodeUri: get_upload_url/
         Environment:
           Variables:
-            BUCKET_NAME: user-input-temporary-lake
+            BUCKET_NAME: sp-user-input-temporary-bucket
         Architectures:
         - x86_64
         Events:
