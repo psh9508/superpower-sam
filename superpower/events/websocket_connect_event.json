@@ -1,0 +1,27 @@
+{
+  "requestContext": {
+    "routeKey": "$connect",
+    "eventType": "CONNECT",
+    "stage": "dev",
+    "domainName": "9ad8ivmy7e.execute-api.ap-northeast-2.amazonaws.com",
+    "connectionId": "USpvcegpoE0CFMA=",
+    "apiId": "9ad8ivmy7e"
+  },
+  "headers": {
+    "Host": "9ad8ivmy7e.execute-api.ap-northeast-2.amazonaws.com",
+    "Origin": "http://localhost:5173",
+    "User-Agent": "local-test-client"
+  },
+  "multiValueHeaders": {
+    "Host": [
+      "9ad8ivmy7e.execute-api.ap-northeast-2.amazonaws.com"
+    ],
+    "Origin": [
+      "http://localhost:5173"
+    ],
+    "User-Agent": [
+      "local-test-client"
+    ]
+  },
+  "isBase64Encoded": false
+}

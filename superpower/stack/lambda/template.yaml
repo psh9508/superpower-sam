@@ -60,6 +60,29 @@ Resources:
               Path: /get-input-url
               Method: get
 
+  WebSocketConnectionFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Runtime: python3.11
+      Timeout: 3
+      Handler: app.lambda_handler
+      FunctionName: WebSocketConnectionFunction
+      CodeUri: websocket_connection/
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - execute-api:ManageConnections
+              Resource:
+                - arn:aws:execute-api:*:*:*/*/@connections/*
+      Architectures:
+      - x86_64
+      # 여기서 연결 할 수 있으면 좋긴 한데..
+      # Events:
+      #   WebSocketEvent:
+      #     Type: Api
+      #     Properties:
+
 # Outputs:
   # HelloWorldApi:
   #   Description: API Gateway endpoint URL for Prod stage for Hello World 
