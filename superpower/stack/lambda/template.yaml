@@ -70,6 +70,41 @@ Resources:
               Path: /get-input-url
               Method: get
 
+  ImageSendFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Runtime: python3.11
+      Timeout: 60
+      Handler: app.lambda_handler
+      FunctionName: ImageSendFunction
+      CodeUri: image_send/
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - s3:GetObject
+                - s3:ListBucket
+                - s3:PutObject
+              Resource:
+                - arn:aws:s3:::sp-*
+                - arn:aws:s3:::sp-*/*
+      Architectures:
+      - x86_64
+      Events:
+        S3ObjectCreatedEvent:
+          Type: EventBridgeRule
+          Properties:
+            RuleName: detect-user-input-image-rule
+            Pattern:
+              source:
+                - "aws.s3"
+              detail-type:
+                - "Object Created"
+              detail:
+                bucket:
+                  name:
+                    - "sp-user-input-temporary-bucket"
+
   WebSocketConnectionFunction:
     Type: AWS::Serverless::Function
     Properties:
