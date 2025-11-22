@@ -32,12 +32,25 @@ def lambda_handler(event, context):
             print(f"[ERROR] Failed to generate presigned URL: {url_error}")
             presigned_url = None
         
-        # 4. WebSocket으로 완료 메시지 전송
+        # 4. S3 메타데이터에서 AI 생성 정보 가져오기
+        try:
+            obj_metadata = s3.head_object(Bucket=bucket, Key=key)
+            ai_prompt = obj_metadata.get('Metadata', {}).get('ai-prompt', 'Unknown prompt')
+            generation_type = obj_metadata.get('Metadata', {}).get('generation-type', 'Unknown')
+        except Exception as meta_error:
+            print(f"[WARNING] Could not get metadata: {meta_error}")
+            ai_prompt = "Unknown prompt"
+            generation_type = "Unknown"
+
+        # 5. WebSocket으로 완료 메시지 전송
         message = {
             "type": "image_complete",
-            "message": "이미지 처리가 완료되었습니다.",
+            "message": "Stable Diffusion 3.5 Large로 고품질 AI 이미지 생성이 완료되었습니다!",
             "fileName": key,
-            "downloadUrl": presigned_url
+            "downloadUrl": presigned_url,
+            "aiPrompt": ai_prompt,
+            "generationType": generation_type,
+            "reason": "업로드된 이미지를 Claude가 분석하여 Stable Diffusion 3.5 Large로 고품질 연관 이미지를 생성했습니다"
         }
         
         try:

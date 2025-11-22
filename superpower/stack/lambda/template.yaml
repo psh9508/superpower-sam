@@ -89,6 +89,11 @@ Resources:
               Resource:
                 - arn:aws:s3:::sp-*
                 - arn:aws:s3:::sp-*/*
+            - Effect: Allow
+              Action:
+                - bedrock:InvokeModel
+                - bedrock:InvokeModelWithResponseStream
+              Resource: "*"
       Architectures:
       - x86_64
       Events:
@@ -124,6 +129,7 @@ Resources:
             - Effect: Allow
               Action:
                 - s3:GetObject
+                - s3:HeadObject
                 - s3:DeleteObject
               Resource:
                 - arn:aws:s3:::sp-*/*
