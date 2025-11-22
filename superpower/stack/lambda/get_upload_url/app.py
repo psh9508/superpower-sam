@@ -15,18 +15,29 @@ cors_headers = {
 s3_client = boto3.client('s3')
 
 def lambda_handler(event, context):
-    # presigned URL 발급할 객체 키
-    object_key = event.get('object_key', 'example.txt')  # 기본값 example.txt
+    # 쿼리 파라미터에서 값 추출
+    query_params = event.get('queryStringParameters') or {}
+    file_name = query_params.get('fileName')
+    key = query_params.get('key') or file_name
+    content_type = query_params.get('contentType', 'application/octet-stream')
+    
+    if not key:
+        return {
+            'statusCode': 400,
+            'headers': cors_headers,
+            'body': json.dumps({'error': 'fileName 또는 key 파라미터가 필요합니다'})
+        }
     
     try:
-        # presigned URL 생성 (1분 = 60초)
+        # upload용 presigned URL 생성 (10분 = 600초)
         presigned_url = s3_client.generate_presigned_url(
-            'get_object',
+            'put_object',
             Params={
                 'Bucket': BUCKET_NAME,
-                'Key': object_key
+                'Key': key,
+                'ContentType': content_type
             },
-            ExpiresIn=60  # URL 만료 시간 (초)
+            ExpiresIn=600  # URL 만료 시간 (초)
         )
         
         return {

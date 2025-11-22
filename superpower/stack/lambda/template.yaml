@@ -48,6 +48,16 @@ Resources:
         Handler: app.lambda_handler
         FunctionName: GetPresignedUploadUrlFunction
         CodeUri: get_upload_url/
+        Policies:
+          - Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:ListBucket
+                  - s3:PutObject
+                Resource:
+                  - arn:aws:s3:::sp-*
+                  - arn:aws:s3:::sp-*/*
         Environment:
           Variables:
             BUCKET_NAME: sp-user-input-temporary-bucket
