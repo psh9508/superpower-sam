@@ -85,6 +85,7 @@ Resources:
                 - s3:GetObject
                 - s3:ListBucket
                 - s3:PutObject
+                - s3:DeleteObject
               Resource:
                 - arn:aws:s3:::sp-*
                 - arn:aws:s3:::sp-*/*
@@ -120,6 +121,11 @@ Resources:
                 - execute-api:ManageConnections
               Resource:
                 - arn:aws:execute-api:*:*:*/*/@connections/*
+            - Effect: Allow
+              Action:
+                - s3:DeleteObject
+              Resource:
+                - arn:aws:s3:::sp-*/*
       Architectures:
       - x86_64
       Events:

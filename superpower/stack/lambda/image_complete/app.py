@@ -4,6 +4,7 @@ import urllib.parse
 
 apigateway = boto3.client('apigatewaymanagementapi', 
                          endpoint_url='https://9ad8ivmy7e.execute-api.ap-northeast-2.amazonaws.com/dev')
+s3 = boto3.client('s3', region_name='ap-northeast-2')
 
 def lambda_handler(event, context):
     try:
@@ -28,16 +29,23 @@ def lambda_handler(event, context):
                 ConnectionId=connection_id,
                 Data=json.dumps(message)
             )
-            print(f"WebSocket message sent to {connection_id}")
+            print(f"[SUCCESS] WebSocket message sent to {connection_id}")
+            
+            # 4. 성공적으로 WebSocket 메시지를 보냈으면 sp-complete-bucket의 파일 삭제
+            try:
+                s3.delete_object(Bucket=bucket, Key=key)
+                print(f"[SUCCESS] Complete file deleted from {bucket}/{key}")
+            except Exception as delete_error:
+                print(f"[WARNING] Failed to delete complete file {bucket}/{key}: {delete_error}")
             
         except apigateway.exceptions.GoneException:
-            print(f"Connection {connection_id} is no longer available")
+            print(f"[INFO] Connection {connection_id} is no longer available")
         except Exception as ws_error:
-            print(f"Error sending WebSocket message: {ws_error}")
+            print(f"[ERROR] Failed sending WebSocket message: {ws_error}")
 
         return {
             "statusCode": 200,
-            "body": json.dumps({"message": "Notification sent successfully"})
+            "body": json.dumps({"message": "Notification sent and file cleaned up successfully"})
         }
 
     except Exception as e:

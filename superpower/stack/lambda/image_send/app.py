@@ -32,11 +32,18 @@ def lambda_handler(event, context):
             Body=body,
             ContentType=content_type
         )
-        print(f"File copied to sp-complete-bucket/{key}")
+        print(f"[SUCCESS] File copied to sp-complete-bucket/{key}")
+
+        # 5. 성공적으로 복사되면 원본 파일 삭제
+        try:
+            s3.delete_object(Bucket=bucket, Key=key)
+            print(f"[SUCCESS] Original file deleted from {bucket}/{key}")
+        except Exception as delete_error:
+            print(f"[WARNING] Failed to delete original file {bucket}/{key}: {delete_error}")
 
         return {
             "statusCode": 200,
-            "body": '{"message": "File copied to complete bucket successfully."}'
+            "body": '{"message": "File copied to complete bucket and original deleted successfully."}'
         }
 
     except Exception as e:
