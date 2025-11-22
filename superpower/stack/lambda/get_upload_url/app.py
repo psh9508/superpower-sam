@@ -37,7 +37,7 @@ def lambda_handler(event, context):
                 'Key': key,
                 'ContentType': content_type
             },
-            ExpiresIn=600  # URL 만료 시간 (초)
+            ExpiresIn=60
         )
         
         return {
