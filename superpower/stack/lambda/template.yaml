@@ -25,20 +25,6 @@ Resources:
             BUCKET_NAME: sp-resized-image-bucket
         Architectures:
         - x86_64
-        Events:
-          S3ObjectCreatedEvent:
-            Type: EventBridgeRule
-            Properties:
-              RuleName: detect-user-input-rule
-              Pattern:
-                source:
-                  - "aws.s3"
-                detail-type:
-                  - "Object Created"
-                detail:
-                  bucket:
-                    name:
-                      - "sp-user-input-temporary-bucket"
 
   GetPresignedUploadUrlFunction:
       Type: AWS::Serverless::Function
@@ -96,20 +82,6 @@ Resources:
               Resource: "*"
       Architectures:
       - x86_64
-      Events:
-        S3ObjectCreatedEvent:
-          Type: EventBridgeRule
-          Properties:
-            RuleName: detect-user-input-image-rule
-            Pattern:
-              source:
-                - "aws.s3"
-              detail-type:
-                - "Object Created"
-              detail:
-                bucket:
-                  name:
-                    - "sp-user-input-temporary-bucket"
 
   ImageCompleteFunction:
     Type: AWS::Serverless::Function
@@ -150,6 +122,31 @@ Resources:
                   name:
                     - "sp-complete-bucket"
 
+  CropFaceFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Runtime: python3.11
+      Timeout: 300
+      MemorySize: 2048
+      Handler: app.lambda_handler
+      FunctionName: CropFaceFunction
+      CodeUri: crop_face/
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - s3:GetObject
+                - s3:PutObject
+                - s3:DeleteObject
+              Resource:
+                - arn:aws:s3:::sp-*/*
+            - Effect: Allow
+              Action:
+                - rekognition:DetectFaces
+              Resource: "*"
+      Architectures:
+      - x86_64
+
   WebSocketConnectionFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -172,6 +169,80 @@ Resources:
       #   WebSocketEvent:
       #     Type: Api
       #     Properties:
+
+  # EventBridge Rules (통합된 이벤트 규칙들)
+  UserInputS3EventRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: user-input-s3-event-rule
+      Description: S3 Object Created event for sp-user-input-temporary-bucket
+      EventPattern:
+        source:
+          - "aws.s3"
+        detail-type:
+          - "Object Created"
+        detail:
+          bucket:
+            name:
+              - "sp-user-input-temporary-bucket"
+      Targets:
+        - Arn: !GetAtt ResizeImageFunction.Arn
+          Id: "ResizeImageTarget"
+        - Arn: !GetAtt ImageSendFunction.Arn
+          Id: "ImageSendTarget"
+        - Arn: !GetAtt CropFaceFunction.Arn
+          Id: "CropFaceTarget"
+
+  CompleteS3EventRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: complete-s3-event-rule
+      Description: S3 Object Created event for sp-complete-bucket
+      EventPattern:
+        source:
+          - "aws.s3"
+        detail-type:
+          - "Object Created"
+        detail:
+          bucket:
+            name:
+              - "sp-complete-bucket"
+      Targets:
+        - Arn: !GetAtt ImageCompleteFunction.Arn
+          Id: "ImageCompleteTarget"
+
+  # Lambda 권한 (EventBridge가 Lambda를 호출할 수 있도록)
+  ResizeImageFunctionEventPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref ResizeImageFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt UserInputS3EventRule.Arn
+
+  ImageSendFunctionEventPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref ImageSendFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt UserInputS3EventRule.Arn
+
+  CropFaceFunctionEventPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref CropFaceFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt UserInputS3EventRule.Arn
+
+  ImageCompleteFunctionEventPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref ImageCompleteFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt CompleteS3EventRule.Arn
 
 # Outputs:
   # HelloWorldApi:
