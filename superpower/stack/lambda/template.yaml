@@ -123,6 +123,7 @@ Resources:
                 - arn:aws:execute-api:*:*:*/*/@connections/*
             - Effect: Allow
               Action:
+                - s3:GetObject
                 - s3:DeleteObject
               Resource:
                 - arn:aws:s3:::sp-*/*
