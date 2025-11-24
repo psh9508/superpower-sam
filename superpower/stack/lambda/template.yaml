@@ -2,30 +2,6 @@ AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 
 Resources:
-  # ResizeImageFunction:
-  #     Type: AWS::Serverless::Function
-  #     Properties:
-  #       Runtime: python3.11
-  #       Timeout: 3
-  #       Handler: app.lambda_handler
-  #       FunctionName: ResizeImageFunction
-  #       CodeUri: resize_image/
-  #       Policies:
-  #         - Statement:
-  #             - Effect: Allow
-  #               Action:
-  #                 - s3:GetObject
-  #                 - s3:ListBucket
-  #                 - s3:PutObject
-  #               Resource:
-  #                 - arn:aws:s3:::sp-*
-  #                 - arn:aws:s3:::sp-*/*
-  #       Environment:
-  #         Variables:
-  #           BUCKET_NAME: sp-resized-image-bucket
-  #       Architectures:
-  #       - x86_64
-
   GetPresignedUploadUrlFunction:
       Type: AWS::Serverless::Function
       Properties:
@@ -96,8 +72,10 @@ Resources:
             - Effect: Allow
               Action:
                 - execute-api:ManageConnections
+                - execute-api:Invoke
               Resource:
-                - arn:aws:execute-api:*:*:*/*/@connections/*
+                # Allow posting to any connection for the WebSocket API (api-id/stage/method)
+                - arn:aws:execute-api:*:*:*/*/*/@connections/*
             - Effect: Allow
               Action:
                 - s3:GetObject
@@ -187,11 +165,11 @@ Resources:
           bucket:
             name:
               - "sp-user-input-temporary-bucket"
-      # Targets:
+      Targets:
         # - Arn: !GetAtt ResizeImageFunction.Arn
         #   Id: "ResizeImageTarget"
-        # - Arn: !GetAtt ImageSendFunction.Arn
-        #   Id: "ImageSendTarget"
+        - Arn: !GetAtt ImageSendFunction.Arn
+          Id: "ImageSendTarget"
         # - Arn: !GetAtt CropFaceFunction.Arn
         #   Id: "CropFaceTarget"
 
@@ -222,13 +200,13 @@ Resources:
   #     Principal: events.amazonaws.com
   #     SourceArn: !GetAtt UserInputS3EventRule.Arn
 
-  # ImageSendFunctionEventPermission:
-  #   Type: AWS::Lambda::Permission
-  #   Properties:
-  #     Action: lambda:InvokeFunction
-  #     FunctionName: !Ref ImageSendFunction
-  #     Principal: events.amazonaws.com
-  #     SourceArn: !GetAtt UserInputS3EventRule.Arn
+  ImageSendFunctionEventPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref ImageSendFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt UserInputS3EventRule.Arn
 
   # CropFaceFunctionEventPermission:
   #   Type: AWS::Lambda::Permission
@@ -238,13 +216,13 @@ Resources:
   #     Principal: events.amazonaws.com
   #     SourceArn: !GetAtt UserInputS3EventRule.Arn
 
-  # ImageCompleteFunctionEventPermission:
-  #   Type: AWS::Lambda::Permission
-  #   Properties:
-  #     Action: lambda:InvokeFunction
-  #     FunctionName: !Ref ImageCompleteFunction
-  #     Principal: events.amazonaws.com
-  #     SourceArn: !GetAtt CompleteS3EventRule.Arn
+  ImageCompleteFunctionEventPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref ImageCompleteFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt CompleteS3EventRule.Arn
 
 # Outputs:
   # HelloWorldApi:

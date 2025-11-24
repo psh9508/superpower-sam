@@ -7,7 +7,8 @@ import json
 import base64
 
 s3 = boto3.client('s3', region_name='ap-northeast-2')
-bedrock = boto3.client("bedrock-runtime", region_name="us-west-2")
+bedrock_nova = boto3.client("bedrock-runtime", region_name="us-east-1")
+bedrock_sd = boto3.client("bedrock-runtime", region_name="us-west-2")
 
 def lambda_handler(event, context):
     try:
@@ -28,24 +29,21 @@ def lambda_handler(event, context):
         try:
             start_time = time.time()
             
-            # 1단계: Claude를 사용해 이미지 분석 (us-west-2에서 호출)
+            # 1단계: Nova Pro를 사용해 이미지 분석 (us-east-1에서 호출)
             analysis_request = {
-                "anthropic_version": "bedrock-2023-05-31",
-                "max_tokens": 200,
                 "messages": [
                     {
                         "role": "user",
                         "content": [
                             {
-                                "type": "image",
-                                "source": {
-                                    "type": "base64",
-                                    "media_type": "image/jpeg",
-                                    "data": original_image_base64
+                                "image": {
+                                    "format": "jpeg",
+                                    "source": {
+                                        "bytes": original_image_base64
+                                    }
                                 }
                             },
                             {
-                                "type": "text",
                                 "text": "이 사람 얼굴을 어떤 동물과 닮았는지 간단히 설명해 주세요. 그리고 그 동물을 창의적이고 예술적인 방식으로 묘사하는 프롬프트를 만들어 주세요."
                             }
                         ]
@@ -53,29 +51,29 @@ def lambda_handler(event, context):
                 ]
             }
             
-            # Claude로 이미지 분석
-            analysis_response = bedrock.invoke_model(
-                modelId="anthropic.claude-3-5-sonnet-20241022-v2:0",
+            # Nova Pro로 이미지 분석
+            analysis_response = bedrock_nova.invoke_model(
+                modelId="amazon.nova-pro-v1:0",
                 contentType="application/json",
                 accept="application/json",
                 body=json.dumps(analysis_request)
             )
             
             analysis_result = json.loads(analysis_response["body"].read())
-            analyzed_prompt = analysis_result["content"][0]["text"].strip()
+            analyzed_prompt = analysis_result["output"]["message"]["content"][0]["text"].strip()
             print(f"[SUCCESS] Image analyzed. Generated prompt: {analyzed_prompt}")
             
             # 2단계: 분석 결과를 바탕으로 Stable Diffusion 3.5 Large로 연관 이미지 생성
+            # SD 3.5 text-to-image request (cfg/steps/width/height are not supported)
             sd_request = {
                 "prompt": analyzed_prompt,
-                "cfg_scale": 7,
-                "steps": 30,
-                "width": 1024,
-                "height": 1024,
-                "samples": 1,
+                "mode": "text-to-image",
+                "output_format": "png",
+                "aspect_ratio": "1:1",
             }
             
-            sd_response = bedrock.invoke_model(
+            # SD 모델은 us-west-2에서 제공됨
+            sd_response = bedrock_sd.invoke_model(
                 modelId="stability.sd3-5-large-v1:0",
                 contentType="application/json",
                 accept="application/json",
@@ -83,7 +81,9 @@ def lambda_handler(event, context):
             )
             
             sd_result = json.loads(sd_response["body"].read())
-            base64_image_data = sd_result["images"][0]
+            base64_image_data = sd_result.get("image") or (sd_result.get("images") or [None])[0]
+            if not base64_image_data:
+                raise ValueError("Stable Diffusion response did not include an image")
             generated_image_data = base64.b64decode(base64_image_data)
             
             generation_time = time.time() - start_time
@@ -106,14 +106,12 @@ def lambda_handler(event, context):
                 fallback_prompt = random.choice(fallback_prompts)
                 fallback_request = {
                     "prompt": fallback_prompt,
-                    "cfg_scale": 7,
-                    "steps": 30,
-                    "width": 1024,
-                    "height": 1024,
-                    "samples": 1,
+                    "mode": "text-to-image",
+                    "output_format": "png",
+                    "aspect_ratio": "1:1",
                 }
                 
-                fallback_response = bedrock.invoke_model(
+                fallback_response = bedrock_sd.invoke_model(
                     modelId="stability.sd3-5-large-v1:0",
                     contentType="application/json",
                     accept="application/json",
@@ -121,7 +119,9 @@ def lambda_handler(event, context):
                 )
                 
                 fallback_result = json.loads(fallback_response["body"].read())
-                base64_image_data = fallback_result["images"][0]
+                base64_image_data = fallback_result.get("image") or (fallback_result.get("images") or [None])[0]
+                if not base64_image_data:
+                    raise ValueError("Fallback Stable Diffusion response did not include an image")
                 generated_image_data = base64.b64decode(base64_image_data)
                 selected_prompt = fallback_prompt + " (fallback generation)"
                 
@@ -140,7 +140,7 @@ def lambda_handler(event, context):
             Metadata={
                 'ai-prompt': selected_prompt,
                 'generation-type': 'stable-diffusion-3.5-large',
-                'analysis-method': 'claude-vision-analysis'
+                'analysis-method': 'nova-pro-vision-analysis'
             }
         )
         print(f"[SUCCESS] AI generated image saved to sp-complete-bucket/{key}")
@@ -157,7 +157,7 @@ def lambda_handler(event, context):
             "body": json.dumps({
                 "message": "AI image generated and saved successfully",
                 "prompt": selected_prompt,
-                "reason": "업로드된 이미지를 Claude가 분석하여 Stable Diffusion 3.5 Large로 고품질 연관 이미지를 생성했습니다"
+                "reason": "업로드된 이미지를 Nova Pro가 분석하여 Stable Diffusion 3.5 Large로 고품질 연관 이미지를 생성했습니다"
             })
         }
 
