@@ -17,7 +17,6 @@ def lambda_handler(event, context):
         print(f"Processing file: s3://{bucket}/{key}")
 
         # 2. 업로드된 이미지 가져와서 분석
-        wait_time = random.uniform(3, 6)
         print(f"Analyzing uploaded image and generating related AI image...")
         
         # S3에서 업로드된 이미지 가져오기
@@ -47,7 +46,7 @@ def lambda_handler(event, context):
                             },
                             {
                                 "type": "text",
-                                "text": "이 이미지를 분석하고, 이와 연관된 창의적인 이미지를 생성하기 위한 영어 프롬프트를 한 문장으로 제안해주세요. 고품질, 상세한 묘사로 작성해주세요. 예: 'A highly detailed surreal interpretation of...' 형태로."
+                                "text": "이 사람 얼굴을 어떤 동물과 닮았는지 간단히 설명해 주세요. 그리고 그 동물을 창의적이고 예술적인 방식으로 묘사하는 프롬프트를 만들어 주세요."
                             }
                         ]
                     }
@@ -91,11 +90,6 @@ def lambda_handler(event, context):
             print(f"[SUCCESS] Related AI image generated in {generation_time:.2f} seconds")
             
             selected_prompt = analyzed_prompt
-            
-            # 남은 시간만큼 대기
-            remaining_wait = wait_time - generation_time
-            if remaining_wait > 0:
-                time.sleep(remaining_wait)
                 
         except Exception as bedrock_error:
             print(f"[WARNING] Bedrock analysis/generation failed: {bedrock_error}")
