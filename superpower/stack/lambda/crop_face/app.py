@@ -8,6 +8,35 @@ import io
 s3 = boto3.client('s3', region_name='ap-northeast-2')
 rekognition = boto3.client('rekognition', region_name='ap-northeast-2')
 
+cors_headers = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS"
+}
+
+
+def _extract_bucket_and_key(event):
+    # EventBridge (S3 -> EventBridge)
+    detail = event.get('detail')
+    if detail:
+        bucket = detail['bucket']['name']
+        key = urllib.parse.unquote_plus(detail['object']['key'])
+        return bucket, key
+
+    # Direct S3 notification
+    records = event.get('Records')
+    if records:
+        record = records[0]
+        bucket = record['s3']['bucket']['name']
+        key = urllib.parse.unquote_plus(record['s3']['object']['key'])
+        return bucket, key
+
+    # Manual/test invoke payloads
+    if 'bucket' in event and 'key' in event:
+        return event['bucket'], urllib.parse.unquote_plus(event['key'])
+
+    raise KeyError("Event does not contain S3 bucket/key information")
+
 
 def _extract_connection_id(key: str) -> str:
     parts = key.split('/')
@@ -125,8 +154,7 @@ def _crop_faces_from_image(bucket: str, key: str, connection_id: str, start_inde
 
 def lambda_handler(event, context):
     try:
-        bucket = event['detail']['bucket']['name']
-        key = urllib.parse.unquote_plus(event['detail']['object']['key'])
+        bucket, key = _extract_bucket_and_key(event)
         print(f"Processing file: s3://{bucket}/{key}")
 
         connection_id = _extract_connection_id(key)
@@ -138,6 +166,7 @@ def lambda_handler(event, context):
             print(f"[INFO] No objects found under {prefix}")
             return {
                 "statusCode": 200,
+                "headers": cors_headers,
                 "body": json.dumps({
                     "message": "No images found for connectionId",
                     "connection_id": connection_id,
@@ -170,6 +199,7 @@ def lambda_handler(event, context):
 
         return {
             "statusCode": 200,
+            "headers": cors_headers,
             "body": json.dumps({
                 "message": "Face cropping completed",
                 "connection_id": connection_id,
@@ -183,6 +213,7 @@ def lambda_handler(event, context):
         print(f"[ERROR] Face cropping failed: {str(e)}")
         return {
             "statusCode": 500,
+            "headers": cors_headers,
             "body": json.dumps({
                 "message": f"Face cropping failed: {str(e)}",
                 "connection_id": connection_id if 'connection_id' in locals() else 'unknown'
