@@ -1,5 +1,4 @@
 import boto3
-import os
 import time
 import random
 import urllib.parse
@@ -8,17 +7,17 @@ import base64
 
 s3 = boto3.client('s3', region_name='ap-northeast-2')
 bedrock_nova = boto3.client("bedrock-runtime", region_name="us-east-1")
-bedrock_sd = boto3.client("bedrock-runtime", region_name="us-west-2")
+bedrock_canvas = boto3.client("bedrock-runtime", region_name="us-east-1")
 
 def lambda_handler(event, context):
-     return {
+    return {
             "statusCode": 200,
             "body": json.dumps({
                 "message": "AI image generated and saved successfully",
-                # "prompt": selected_prompt,
-                # "reason": "업로드된 이미지를 Nova Pro가 분석하여 Stable Diffusion 3.5 Large로 고품질 연관 이미지를 생성했습니다"
+                "reason": "업로드된 이미지를 Nova Pro가 분석한 뒤 Nova Canvas로 고품질 연관 이미지를 생성했습니다"
             })
-    }
+        }
+
     # try:
     #     # 1. EventBridge 이벤트에서 버킷 이름과 객체 키 추출
     #     bucket = event['detail']['bucket']['name']
@@ -52,7 +51,7 @@ def lambda_handler(event, context):
     #                             }
     #                         },
     #                         {
-    #                             "text": "이 사람 얼굴을 어떤 동물과 닮았는지 간단히 설명해 주세요. 그리고 그 동물을 창의적이고 예술적인 방식으로 묘사하는 프롬프트를 만들어 주세요."
+    #                             "text": "성장형 게임에서 사용할 아기 펫 이미지를 생성하려고해 이미지 생성에 사용할 프롬프트용 이미지의 디테일을 설명해줘"
     #                         }
     #                     ]
     #                 }
@@ -71,31 +70,43 @@ def lambda_handler(event, context):
     #         analyzed_prompt = analysis_result["output"]["message"]["content"][0]["text"].strip()
     #         print(f"[SUCCESS] Image analyzed. Generated prompt: {analyzed_prompt}")
             
-    #         # 2단계: 분석 결과를 바탕으로 Stable Diffusion 3.5 Large로 연관 이미지 생성
-    #         # SD 3.5 text-to-image request (cfg/steps/width/height are not supported)
-    #         sd_request = {
-    #             "prompt": analyzed_prompt,
-    #             "mode": "text-to-image",
-    #             "output_format": "png",
-    #             "aspect_ratio": "1:1",
+    #         # 2단계: 분석 결과를 바탕으로 Nova Canvas로 연관 이미지 생성
+    #         canvas_request = {
+    #             "taskType": "TEXT_IMAGE",
+    #             "textToImageParams": {
+    #                 "text": analyzed_prompt
+    #             },
+    #             "imageGenerationConfig": {
+    #                 "numberOfImages": 1,
+    #                 "width": 1024,
+    #                 "height": 1024
+    #             }
     #         }
             
-    #         # SD 모델은 us-west-2에서 제공됨
-    #         sd_response = bedrock_sd.invoke_model(
-    #             modelId="stability.sd3-5-large-v1:0",
+    #         # Nova Canvas는 us-east-1에서 제공됨
+    #         canvas_response = bedrock_canvas.invoke_model(
+    #             modelId="amazon.nova-canvas-v1:0",
     #             contentType="application/json",
     #             accept="application/json",
-    #             body=json.dumps(sd_request)
+    #             body=canvas_request
     #         )
             
-    #         sd_result = json.loads(sd_response["body"].read())
-    #         base64_image_data = sd_result.get("image") or (sd_result.get("images") or [None])[0]
+    #         canvas_result = json.loads(canvas_response["body"].read())
+    #         base64_image_data = canvas_result.get("images") or canvas_result.get("image")
+    #         if isinstance(base64_image_data, list):
+    #             first_image = base64_image_data[0] if base64_image_data else None
+    #             if isinstance(first_image, dict):
+    #                 base64_image_data = first_image.get("base64") or first_image.get("image") or first_image.get("data")
+    #             else:
+    #                 base64_image_data = first_image
+    #         elif isinstance(base64_image_data, dict):
+    #             base64_image_data = base64_image_data.get("base64") or base64_image_data.get("image") or base64_image_data.get("data")
     #         if not base64_image_data:
-    #             raise ValueError("Stable Diffusion response did not include an image")
+    #             raise ValueError("Nova Canvas response did not include an image")
     #         generated_image_data = base64.b64decode(base64_image_data)
             
     #         generation_time = time.time() - start_time
-    #         print(f"[SUCCESS] Related AI image generated in {generation_time:.2f} seconds")
+    #         print(f"[SUCCESS] Related AI image generated with Nova Canvas in {generation_time:.2f} seconds")
             
     #         selected_prompt = analyzed_prompt
                 
@@ -113,23 +124,36 @@ def lambda_handler(event, context):
     #         try:
     #             fallback_prompt = random.choice(fallback_prompts)
     #             fallback_request = {
-    #                 "prompt": fallback_prompt,
-    #                 "mode": "text-to-image",
-    #                 "output_format": "png",
-    #                 "aspect_ratio": "1:1",
+    #                 "taskType": "TEXT_IMAGE",
+    #                 "textToImageParams": {
+    #                     "text": fallback_prompt
+    #                 },
+    #                 "imageGenerationConfig": {
+    #                     "numberOfImages": 1,
+    #                     "width": 1024,
+    #                     "height": 1024
+    #                 }
     #             }
                 
-    #             fallback_response = bedrock_sd.invoke_model(
-    #                 modelId="stability.sd3-5-large-v1:0",
+    #             fallback_response = bedrock_canvas.invoke_model(
+    #                 modelId="amazon.nova-canvas-v1:0",
     #                 contentType="application/json",
     #                 accept="application/json",
     #                 body=json.dumps(fallback_request)
     #             )
                 
     #             fallback_result = json.loads(fallback_response["body"].read())
-    #             base64_image_data = fallback_result.get("image") or (fallback_result.get("images") or [None])[0]
+    #             base64_image_data = fallback_result.get("images") or fallback_result.get("image")
+    #             if isinstance(base64_image_data, list):
+    #                 first_image = base64_image_data[0] if base64_image_data else None
+    #                 if isinstance(first_image, dict):
+    #                     base64_image_data = first_image.get("base64") or first_image.get("image") or first_image.get("data")
+    #                 else:
+    #                     base64_image_data = first_image
+    #             elif isinstance(base64_image_data, dict):
+    #                 base64_image_data = base64_image_data.get("base64") or base64_image_data.get("image") or base64_image_data.get("data")
     #             if not base64_image_data:
-    #                 raise ValueError("Fallback Stable Diffusion response did not include an image")
+    #                 raise ValueError("Fallback Nova Canvas response did not include an image")
     #             generated_image_data = base64.b64decode(base64_image_data)
     #             selected_prompt = fallback_prompt + " (fallback generation)"
                 
@@ -147,7 +171,7 @@ def lambda_handler(event, context):
     #         ContentType='image/png',
     #         Metadata={
     #             'ai-prompt': selected_prompt,
-    #             'generation-type': 'stable-diffusion-3.5-large',
+    #             'generation-type': 'nova-canvas-v1',
     #             'analysis-method': 'nova-pro-vision-analysis'
     #         }
     #     )
@@ -165,7 +189,7 @@ def lambda_handler(event, context):
     #         "body": json.dumps({
     #             "message": "AI image generated and saved successfully",
     #             "prompt": selected_prompt,
-    #             "reason": "업로드된 이미지를 Nova Pro가 분석하여 Stable Diffusion 3.5 Large로 고품질 연관 이미지를 생성했습니다"
+    #             "reason": "업로드된 이미지를 Nova Pro가 분석한 뒤 Nova Canvas로 고품질 연관 이미지를 생성했습니다"
     #         })
     #     }
 
