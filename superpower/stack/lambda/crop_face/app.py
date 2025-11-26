@@ -200,13 +200,13 @@ def lambda_handler(event, context):
         return {
             "statusCode": 200,
             "headers": cors_headers,
-            "body": json.dumps({
+            "body": {
                 "message": "Face cropping completed",
                 "connection_id": connection_id,
                 "faces_found": total_faces,
                 "detection_method": "aws-rekognition",
                 "results": processed_results
-            })
+            }
         }
 
     except Exception as e:
@@ -214,8 +214,8 @@ def lambda_handler(event, context):
         return {
             "statusCode": 500,
             "headers": cors_headers,
-            "body": json.dumps({
+            "body": {
                 "message": f"Face cropping failed: {str(e)}",
                 "connection_id": connection_id if 'connection_id' in locals() else 'unknown'
-            })
+            }
         }
