@@ -4,7 +4,7 @@ Transform: AWS::Serverless-2016-10-31
 Globals:
   Api:
     Cors:
-      AllowOrigins: "'*'"
+      AllowOrigin: "'*'"
       AllowHeaders: "'Content-Type'"
       AllowMethods: "'GET,OPTIONS'"
 
