@@ -1,6 +1,13 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 
+Globals:
+  Api:
+    Cors:
+      AllowOrigins: "'*'"
+      AllowHeaders: "'Content-Type'"
+      AllowMethods: "'GET,OPTIONS'"
+
 Resources:
   GetPresignedUploadUrlFunction:
       Type: AWS::Serverless::Function
