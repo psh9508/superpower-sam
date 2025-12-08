@@ -3,7 +3,7 @@ import json
 import urllib.parse
 
 apigateway = boto3.client('apigatewaymanagementapi', 
-                         endpoint_url='https://az7pmwxhyi.execute-api.ap-northeast-2.amazonaws.com/production')
+                         endpoint_url='https://auxe3bu4yh.execute-api.ap-northeast-2.amazonaws.com/production/')
 s3 = boto3.client('s3', region_name='ap-northeast-2')
 
 def lambda_handler(event, context):
