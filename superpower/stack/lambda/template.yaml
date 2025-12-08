@@ -9,6 +9,15 @@ Globals:
       AllowMethods: "'GET,OPTIONS'"
 
 Resources:
+  PublicApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: Prod
+      Cors:
+        AllowOrigin: "'*'"
+        AllowHeaders: "'*'"
+        AllowMethods: "'GET,POST,OPTIONS'"
+
   GetPresignedUploadUrlFunction:
       Type: AWS::Serverless::Function
       Properties:
@@ -36,6 +45,7 @@ Resources:
           GetPresignedUploadUrl:
             Type: Api
             Properties:
+              RestApiId: !Ref PublicApi
               Path: /get-input-url
               Method: get
 
@@ -65,6 +75,13 @@ Resources:
               Resource: "*"
       Architectures:
       - x86_64
+      Events:
+        ImageSendApi:
+          Type: Api
+          Properties:
+            RestApiId: !Ref PublicApi
+            Path: /image-send
+            Method: post
 
   ImageCompleteFunction:
     Type: AWS::Serverless::Function

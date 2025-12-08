@@ -18,6 +18,10 @@ Globals:
       LogFormat: JSON
   Api:
     TracingEnabled: true
+    Cors:
+      AllowOrigin: "'*'"
+      AllowHeaders: "'*'"
+      AllowMethods: "'GET,POST,OPTIONS'"
 Resources:
   LambdaStack:
     Type: AWS::CloudFormation::Stack

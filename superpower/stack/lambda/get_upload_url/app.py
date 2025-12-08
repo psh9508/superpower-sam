@@ -19,7 +19,11 @@ def lambda_handler(event, context):
     query_params = event.get('queryStringParameters') or {}
     file_name = query_params.get('fileName')
     key = query_params.get('key') or file_name
-    content_type = query_params.get('contentType', 'application/octet-stream')
+    content_type = query_params.get("contentType")  # ← 프런트와 동일하게 받기
+
+    # content_type 없으면 기본값을 주되, 프런트도 그 값으로 업로드해야 합니다.
+    if not content_type:
+        content_type = "image/jpeg"  # 혹은 None으로 두고 서명에서 제외
     
     if not key:
         return {

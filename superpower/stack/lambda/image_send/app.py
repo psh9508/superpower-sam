@@ -1,13 +1,49 @@
-import boto3
-import time
-import random
-import urllib.parse
-import json
 import base64
+import json
+import random
+import time
+import urllib.parse
+
+import boto3
 
 s3 = boto3.client('s3', region_name='ap-northeast-2')
 bedrock_nova = boto3.client("bedrock-runtime", region_name="us-east-1")
 bedrock_canvas = boto3.client("bedrock-runtime", region_name="us-east-1")
+
+cors_headers = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Headers": "*",
+    "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+    "Content-Type": "application/json",
+}
+
+
+def _parse_http_body(event):
+    """Parse JSON body from API Gateway event; handles base64 encoding."""
+    body = event.get("body")
+    if body is None:
+        return {}
+    if event.get("isBase64Encoded"):
+        try:
+            body = base64.b64decode(body).decode("utf-8")
+        except Exception:
+            return {}
+    if isinstance(body, str):
+        try:
+            return json.loads(body)
+        except Exception:
+            return {}
+    if isinstance(body, dict):
+        return body
+    return {}
+
+
+def _success(status_code, payload):
+    return {"statusCode": status_code, "headers": cors_headers, "body": json.dumps(payload)}
+
+
+def _error(status_code, message):
+    return _success(status_code, {"message": message})
 
 def lambda_handler(event, context):
     # return {
@@ -19,9 +55,17 @@ def lambda_handler(event, context):
     #     }
 
     try:
-        # 1. EventBridge 이벤트에서 버킷 이름과 객체 키 추출
-        bucket = event['detail']['bucket']['name']
-        key = urllib.parse.unquote_plus(event['detail']['object']['key'])
+        # 1. 이벤트 유형에 따라 버킷 이름과 객체 키 추출 (EventBridge or API Gateway)
+        if "detail" in event:
+            bucket = event["detail"]["bucket"]["name"]
+            key = urllib.parse.unquote_plus(event["detail"]["object"]["key"])
+        else:
+            body = _parse_http_body(event)
+            query_params = event.get("queryStringParameters") or {}
+            bucket = body.get("bucket") or body.get("Bucket") or query_params.get("bucket")
+            key = body.get("key") or body.get("Key") or query_params.get("key")
+            if not bucket or not key:
+                return _error(400, "bucket과 key를 전달해야 합니다 (body 혹은 query)")
         print(f"Processing file: s3://{bucket}/{key}")
 
         # 2. 업로드된 이미지 가져와서 분석
@@ -184,18 +228,12 @@ def lambda_handler(event, context):
         # except Exception as delete_error:
         #     print(f"[WARNING] Failed to delete original file {bucket}/{key}: {delete_error}")
 
-        return {
-            "statusCode": 200,
-            "body": json.dumps({
-                "message": "AI image generated and saved successfully",
-                "prompt": selected_prompt,
-                "reason": "업로드된 이미지를 Nova Pro가 분석한 뒤 Nova Canvas로 고품질 연관 이미지를 생성했습니다"
-            })
-        }
+        return _success(200, {
+            "message": "AI image generated and saved successfully",
+            "prompt": selected_prompt,
+            "reason": "업로드된 이미지를 Nova Pro가 분석한 뒤 Nova Canvas로 고품질 연관 이미지를 생성했습니다"
+        })
 
     except Exception as e:
         print("Error processing file:", e)
-        return {
-            "statusCode": 500,
-            "body": f'{{"message": "{str(e)}"}}'
-        }
+        return _error(500, str(e))
