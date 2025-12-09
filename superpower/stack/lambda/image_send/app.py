@@ -1,6 +1,7 @@
 import base64
 import json
 import random
+import re
 import time
 import urllib.parse
 
@@ -44,6 +45,30 @@ def _success(status_code, payload):
 
 def _error(status_code, message):
     return _success(status_code, {"message": message})
+
+
+def _sanitize_text_for_generation(text, max_length=400):
+    """Bedrock 프롬프트를 짧고 평범하게 정제해 필터를 회피한다."""
+    if not isinstance(text, str):
+        return "A cute baby fantasy pet in soft pastel colors."
+    cleaned = text.replace("**", " ")
+    cleaned = re.sub(r"[#*_`>-]+", " ", cleaned)
+    cleaned = " ".join(cleaned.split())
+    if not cleaned:
+        cleaned = "A cute baby fantasy pet in soft pastel colors."
+    return cleaned[:max_length]
+
+
+def _safe_metadata_value(value, max_length=200):
+    """S3 메타데이터는 ASCII만 허용하므로 안전 문자열로 변환한다."""
+    if not isinstance(value, str):
+        return "unknown"
+    ascii_only = value.encode("ascii", errors="ignore").decode("ascii")
+    ascii_only = " ".join(ascii_only.split())
+    if not ascii_only:
+        ascii_only = "unknown"
+    return ascii_only[:max_length]
+
 
 def lambda_handler(event, context):
     # return {
@@ -112,13 +137,15 @@ def lambda_handler(event, context):
             
             analysis_result = json.loads(analysis_response["body"].read())
             analyzed_prompt = analysis_result["output"]["message"]["content"][0]["text"].strip()
+            sanitized_prompt = _sanitize_text_for_generation(analyzed_prompt)
             print(f"[SUCCESS] Image analyzed. Generated prompt: {analyzed_prompt}")
+            print(f"[INFO] Sanitized prompt for generation: {sanitized_prompt}")
             
             # 2단계: 분석 결과를 바탕으로 Nova Canvas로 연관 이미지 생성
             canvas_request = {
                 "taskType": "TEXT_IMAGE",
                 "textToImageParams": {
-                    "text": analyzed_prompt
+                    "text": sanitized_prompt
                 },
                 "imageGenerationConfig": {
                     "numberOfImages": 1,
@@ -152,7 +179,7 @@ def lambda_handler(event, context):
             generation_time = time.time() - start_time
             print(f"[SUCCESS] Related AI image generated with Nova Canvas in {generation_time:.2f} seconds")
             
-            selected_prompt = analyzed_prompt
+            selected_prompt = sanitized_prompt
                 
         except Exception as bedrock_error:
             print(f"[WARNING] Bedrock analysis/generation failed: {bedrock_error}")
@@ -214,7 +241,7 @@ def lambda_handler(event, context):
             Body=generated_image_data,
             ContentType='image/png',
             Metadata={
-                'ai-prompt': selected_prompt,
+                'ai-prompt': _safe_metadata_value(selected_prompt),
                 'generation-type': 'nova-canvas-v1',
                 'analysis-method': 'nova-pro-vision-analysis'
             }
