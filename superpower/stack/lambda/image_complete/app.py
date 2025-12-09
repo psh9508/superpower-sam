@@ -13,7 +13,7 @@ def lambda_handler(event, context):
         object_key = urllib.parse.unquote_plus(event['detail']['object']['key'])
         print(f"Processing file: s3://{bucket}/{object_key}")
         
-        # 2. 파일 이름에서 connectionId 추출 (파일명이 connectionId.확장자 형태)
+        # 2. 파일 이름에서 connectionId 추출
         path_parts = object_key.split('/')
         connection_id = path_parts[0]  # 폴더명이 connectionId로 사용됨
         file_name = path_parts[-1]     # 실제 파일명만 별도로 보관

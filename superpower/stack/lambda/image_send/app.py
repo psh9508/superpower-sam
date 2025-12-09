@@ -18,6 +18,14 @@ cors_headers = {
 }
 
 
+def _with_cors(response):
+    if not isinstance(response, dict):
+        return response
+    headers = response.get("headers") or {}
+    response["headers"] = {**cors_headers, **headers}
+    return response
+
+
 def _parse_http_body(event):
     """Parse JSON body from API Gateway event; handles base64 encoding."""
     body = event.get("body")
@@ -39,13 +47,21 @@ def _parse_http_body(event):
 
 
 def _success(status_code, payload):
-    return {"statusCode": status_code, "headers": cors_headers, "body": json.dumps(payload)}
+    return _with_cors({"statusCode": status_code, "body": json.dumps(payload)})
 
 
 def _error(status_code, message):
     return _success(status_code, {"message": message})
 
+
 def lambda_handler(event, context):
+    http_method = (
+        (event.get("httpMethod") or event.get("requestContext", {}).get("http", {}).get("method", ""))
+        .upper()
+    )
+    if http_method == "OPTIONS":
+        return _success(200, {"message": "CORS preflight handled"})
+
     # return {
     #         "statusCode": 200,
     #         "body": json.dumps({
@@ -95,7 +111,7 @@ def lambda_handler(event, context):
                                 }
                             },
                             {
-                                "text": "성장형 게임에서 사용할 아기 펫 이미지를 생성하려고해 이미지 생성에 사용할 프롬프트용 이미지의 디테일을 설명해줘"
+                                "text": "성장형 게임에서 사용할 아기 펫 이미지를 생성하기 위해 전달 된 이미지를 분석 후 그것을 바탕으로 생성할 아기 펫에 대해 구체적으로 설명해줘"
                             }
                         ]
                     }
