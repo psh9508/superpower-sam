@@ -190,33 +190,6 @@ Resources:
         # - Arn: !GetAtt CropFaceFunction.Arn
         #   Id: "CropFaceTarget"
 
-  CompleteS3EventRule:
-    Type: AWS::Events::Rule
-    Properties:
-      Name: complete-s3-event-rule
-      Description: S3 Object Created event for sp-complete-bucket
-      EventPattern:
-        source:
-          - "aws.s3"
-        detail-type:
-          - "Object Created"
-        detail:
-          bucket:
-            name:
-              - "sp-complete-bucket"
-      Targets:
-        - Arn: !GetAtt ImageCompleteFunction.Arn
-          Id: "ImageCompleteTarget"
-
-  # Lambda 권한 (EventBridge가 Lambda를 호출할 수 있도록)
-  # ResizeImageFunctionEventPermission:
-  #   Type: AWS::Lambda::Permission
-  #   Properties:
-  #     Action: lambda:InvokeFunction
-  #     FunctionName: !Ref ResizeImageFunction
-  #     Principal: events.amazonaws.com
-  #     SourceArn: !GetAtt UserInputS3EventRule.Arn
-
   MakePetFunctionEventPermission:
     Type: AWS::Lambda::Permission
     Properties:
@@ -225,21 +198,6 @@ Resources:
       Principal: events.amazonaws.com
       SourceArn: !GetAtt UserInputS3EventRule.Arn
 
-  # CropFaceFunctionEventPermission:
-  #   Type: AWS::Lambda::Permission
-  #   Properties:
-  #     Action: lambda:InvokeFunction
-  #     FunctionName: !Ref CropFaceFunction
-  #     Principal: events.amazonaws.com
-  #     SourceArn: !GetAtt UserInputS3EventRule.Arn
-
-  ImageCompleteFunctionEventPermission:
-    Type: AWS::Lambda::Permission
-    Properties:
-      Action: lambda:InvokeFunction
-      FunctionName: !Ref ImageCompleteFunction
-      Principal: events.amazonaws.com
-      SourceArn: !GetAtt CompleteS3EventRule.Arn
 
 # Outputs:
   # HelloWorldApi:
