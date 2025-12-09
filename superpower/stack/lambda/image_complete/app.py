@@ -51,6 +51,8 @@ def lambda_handler(event, context):
             "generationType": generation_type,
             "reason": "업로드된 이미지를 Claude가 분석하여 Stable Diffusion 3.5 Large로 고품질 연관 이미지를 생성했습니다"
         }
+
+        print(f"최종 메시지 : {json.dumps(message)}")
         
         try:
             apigateway.post_to_connection(
