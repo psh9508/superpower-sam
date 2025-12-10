@@ -48,14 +48,12 @@ def _error(status_code, message):
 
 
 def _sanitize_text_for_generation(text, max_length=400):
-    """Bedrock 프롬프트를 짧고 평범하게 정제해 필터를 회피한다."""
+    """Bedrock 프롬프트를 정제한다."""
     if not isinstance(text, str):
-        return "A cute baby fantasy pet in soft pastel colors."
+        text = ""
     cleaned = text.replace("**", " ")
     cleaned = re.sub(r"[#*_`>-]+", " ", cleaned)
     cleaned = " ".join(cleaned.split())
-    if not cleaned:
-        cleaned = "A cute baby fantasy pet in soft pastel colors."
     return cleaned[:max_length]
 
 
@@ -128,16 +126,82 @@ def lambda_handler(event, context):
             )
             
             analysis_result = json.loads(analysis_response["body"].read())
-            analyzed_prompt = analysis_result["output"]["message"]["content"][0]["text"].strip()
-            sanitized_prompt = _sanitize_text_for_generation(analyzed_prompt)
-            print(f"[SUCCESS] Image analyzed. Generated prompt: {analyzed_prompt}")
-            print(f"[INFO] Sanitized prompt for generation: {sanitized_prompt}")
-            
+            analyzed_prompt = analysis_result["output"]["message"]["content"][0]["text"].strip()    
+
+            # 1. System Prompt에 명확한 JSON 스키마와 지시사항을 정의합니다.
+            system_instruction = """
+            당신은 Nova Canvas를 위한 전문 프롬프트 엔지니어입니다.
+            사용자의 입력을 바탕으로 이미지 생성용 프롬프트를 작성하세요.
+
+            [제약 사항]
+            1. 스타일: SOFT_DIGITAL_PAINTING
+            2. 출력 형식: 오직 유효한 JSON 포맷으로만 응답하세요. Markdown, 코드 블록(```json), 기타 설명을 포함하지 마세요.
+            3. JSON 스키마:
+            {
+                "text": "영문으로 작성된 실제 이미지 생성 프롬프트 (1~2문장)",
+                "navigationText": "사용자에게 보여줄 한글 안내 문구 (매우 짧고 간결하게)"
+            }
+            """
+
+            llm_prompt_request = {
+                "system": [{"text": system_instruction}],
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "text": (
+                                    "아래 분석 텍스트를 기반으로 캐릭터(아기 펫, 중앙 배치)를 포함한 프롬프트를 만들어줘.\n"
+                                    f"분석 텍스트: {analyzed_prompt}"
+                                )
+                            }
+                        ],
+                    }
+                ],
+                # inferenceConfig를 통해 랜덤성을 줄여 구조적 안정성을 높입니다.
+                "inferenceConfig": {
+                    "temperature": 0.0,  # 포맷 준수를 위해 0에 가깝게 설정
+                    "topP": 0.9,
+                    "maxTokens": 1000
+                }
+            }
+
+            try:
+                llm_response = bedrock_nova.invoke_model(
+                    modelId="amazon.nova-pro-v1:0",
+                    contentType="application/json",
+                    accept="application/json",
+                    body=json.dumps(llm_prompt_request),
+                )
+                
+                llm_result = json.loads(llm_response["body"].read())
+                response_text = llm_result["output"]["message"]["content"][0]["text"].strip()
+                
+                # [중요] 응답이 혹시 마크다운 코드블록(```json ...)으로 감싸져 있을 경우를 대비한 클린업
+                if response_text.startswith("```json"):
+                    response_text = response_text.replace("```json", "").replace("```", "").strip()
+                elif response_text.startswith("```"):
+                    response_text = response_text.replace("```", "").strip()
+
+                # 문자열을 JSON 객체로 파싱
+                structured_data = json.loads(response_text)
+                
+                print(f"[INFO] Text: {structured_data.get('text')}")
+                print(f"[INFO] Navigation: {structured_data.get('navigationText')}")
+
+            except json.JSONDecodeError:
+                print(f"[ERROR] 모델이 올바른 JSON을 반환하지 않았습니다. 응답: {response_text}")
+            except Exception as transform_error:
+                print(f"[WARNING] 처리 중 오류 발생: {transform_error}")
+
+
             # 2단계: 분석 결과를 바탕으로 Nova Canvas로 연관 이미지 생성
             canvas_request = {
                 "taskType": "TEXT_IMAGE",
                 "textToImageParams": {
-                    "text": sanitized_prompt
+                    "text": structured_data.get('text'),
+                    "negativeText": structured_data.get('navigationText'),
+                    "style": "SOFT_DIGITAL_PAINTING",
                 },
                 "imageGenerationConfig": {
                     "numberOfImages": 1,
@@ -171,7 +235,7 @@ def lambda_handler(event, context):
             generation_time = time.time() - start_time
             print(f"[SUCCESS] Related AI image generated with Nova Canvas in {generation_time:.2f} seconds")
             
-            selected_prompt = sanitized_prompt
+            selected_prompt = structured_data.get('text')
                 
         except Exception as bedrock_error:
             print(f"[WARNING] Bedrock analysis/generation failed: {bedrock_error}")
@@ -189,7 +253,9 @@ def lambda_handler(event, context):
                 fallback_request = {
                     "taskType": "TEXT_IMAGE",
                     "textToImageParams": {
-                        "text": fallback_prompt
+                        "text": fallback_prompt,
+                        "negativeText": "real human baby, realistic adult features, extra limbs, distorted anatomy, scary expression, cluttered background",
+                        "style": "SOFT_DIGITAL_PAINTING",
                     },
                     "imageGenerationConfig": {
                         "numberOfImages": 1,
