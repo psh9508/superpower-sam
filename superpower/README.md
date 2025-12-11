@@ -1,5 +1,7 @@
 # superpower
 
+![아키텍쳐](https://i.ibb.co/676ptpbv/image.png)
+
 This project contains source code and supporting files for a serverless application that you can deploy with the SAM CLI. It includes the following files and folders.
 
 - hello_world - Code for the application's Lambda function.
